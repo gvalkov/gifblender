@@ -1,0 +1,277 @@
+#!/bin/bash -u
+
+# Copyright (c) 2012 Georgi Valkov. All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are
+# met:
+#
+#   1. Redistributions of source code must retain the above copyright
+#      notice, this list of conditions and the following disclaimer.
+#
+#   2. Redistributions in binary form must reproduce the above copyright
+#      notice, this list of conditions and the following disclaimer in
+#      the documentation and/or other materials provided with the
+#      distribution.
+#
+#   3. Neither the name of author nor the names of its contributors may
+#      be used to endorse or promote products derived from this software
+#      without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL GEORGI VALKOV BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+# ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+# I really needed a short break from Python, so I wrote this.
+
+usage="\
+Usage: $(basename $0) [options] <img.gif>|<img1> <img2> ...
+
+Options:
+  -h, --help               show this help message and exit
+  -o, --outdir <arg>       output directory
+  -s, --steps <arg>        number of steps
+  -t, --transition <arg>   transition timing
+  -b, --blend-last         blend first and last frame
+
+Available transition timings:
+  linear (default)
+  ease
+  ease-in
+  ease-out
+  ease-in-out\
+"
+
+[[ $# -eq 0 ]] \
+&& echo "$usage" && exit 1
+
+
+## default options
+help=1
+steps=10
+outdir=""
+blend_last=1
+transition=linear
+list_transitions=1
+
+
+## parse command line
+long_opts="outdir:,steps:,transition:,help,blend-last"
+opts=$(getopt -o "o:t:s:bh" -l "$long_opts" -- "$@")
+[[ $? -ne 0 ]] && exit 1
+
+eval set -- "$opts"
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -o|--outdir)      outdir="$2" ; shift ;;
+    -t|--transition)  transition="$2"; shift ;;
+    -s|--steps)       steps="$2"; shift ;;
+    -h|--help)        help=0;;
+    -b|--blend-last)  blend_last=0;;
+    --) shift; break ;;
+     *) break;;
+  esac
+  shift
+done
+
+
+[[ $help -eq 0 ]] && echo "$usage" && exit 1
+
+if [[ -z "$outdir" ]]; then
+  echo "please specify output directory with -o|--outdir"
+  exit 1
+fi
+
+# Return n blending steps from 0 to 100%
+# A good explanation on what's about to happen can be found here:
+# http://st-on-it.blogspot.com/2011/05/calculating-cubic-bezier-function.html
+function blending-steps () {
+  # $1 -> number of steps
+  # $2..5 -> (x1, y1)(x3, y3)
+
+  cat <<EOF | bc
+scale = 4
+inc = 1.0/$1
+
+define abs(x) {
+  if (0>x) return x*-1
+  return x
+}
+
+define round(x) {
+  auto save
+  save = scale ; scale = 0
+  x = (x + 0.5)/1
+  scale = save
+
+  return x
+}
+
+# p0 and p2 are fixed to (0,0) and (1,1)
+define cubic_bezier(t, x1, y1, x3, y3) {
+  auto ax, ay, bx, by, cx, cy, xy
+
+  cx = 3 * x1
+  bx = 3 * (x3-x1) - cx
+  ax = 1 - cx - bx
+
+  cy = 3 * y1
+  by = 3 * (y3 - y1) - cy
+  ay = 1 - cy - by
+
+  xy[0] = (cx + t * (bx + t * ax)) * t
+  xy[1] = (cy + t * (by + t * ay)) * t
+
+  return xy
+}
+
+# solve using bisection
+define solve(t, x1, y1, x3, y3) {
+  auto t0, a, b, xy
+  t0 = 0.0 ; a = 1.0 ; b = t
+
+  while (t0 < a) {
+    xy = cubic_bezier(b, x1, y1, x3, y3)
+    x = xy[0]
+
+    if (abs(x-t) < 0.001) return b
+    if (t>x) {
+      t0 = b
+    } else {
+      a = b
+    }
+
+    b = (a - t0)*0.5 + t0
+  }
+
+  xy = cubic_bezier(b, x1, y1, x3, y3)
+  x = xy[0]
+  return x
+}
+
+for (t=0.0 ; t<=1.0; t+=inc) {
+  x = solve(t, $2, $3, $4, $5)
+  xy = cubic_bezier(x, $2, $3, $4, $5)
+  round(xy[1] * 100)
+}
+EOF
+}
+
+
+# the control points values were taken from the
+# transition-timing-function property in css3
+function get-blending-steps () {
+  case "$1" in
+    linear)      p=$(blending-steps $steps 0 0 1 1);;
+    ease)        p=$(blending-steps $steps 0.25 0.1 0.25 1);;
+    ease-in)     p=$(blending-steps $steps 0.42 0 1 1);;
+    ease-out)    p=$(blending-steps $steps 0 0 0.58 1);;
+    ease-in-out) p=$(blending-steps $steps 0.42 0 0.58 1);;
+  esac
+  echo "$p"
+}
+
+
+function list-transitions () {
+  for t in ${transitions[@]}; do
+    points=$(get-blending-steps $t | xargs)
+    printf "%-12s %s %s\n" $t: $(spark.py $points) "$points"
+  done
+}
+
+
+# frame-025.gif -> frame-026.gif
+function next-in-seq () {
+  # will break if extension has numbers in it
+  next=$(echo "$1" | grep -o '[0-9]*' | tail -1)
+  next=$(printf "%04d" $(($next + 1)))
+  echo "$1" | sed -e "s,-[0-9]*\.,-${next}.,"
+}
+
+
+function extract-gif () {
+  # frames=$(identify $1 | awk -F' GIF ' '{print $1}')
+  # count=$(echo "$frames" | wc -l)
+
+  echo "Extracting $(identify $1 | wc -l) frames from $1"
+  convert "$1" "${outdir}/frame-%04d.gif"
+}
+
+
+function blend-images () {
+  i=0
+  ncores=$(grep processor /proc/cpuinfo | wc -l)
+
+  echo -e "\nBlending $(basename $2) with $(basename $3):"
+  prev_out=""
+  for percent in $1; do
+    percent=$(printf "%04d" $percent)
+
+    fn="${2%.*}"
+    ext="${2#*.}"
+    out="${fn}-${percent}.${ext}"
+
+    [[ "$prev_out" == "$out" ]] && out="${fn}-${percent}a.${ext}"
+
+    printf "%s + %-4s + %s -> %s \n" $(basename $2) ${percent}%  $(basename $3) $(basename $out)
+    x_args[$i]=$"${percent}%\n${2}\n${3}\n${out}\n"
+    i=$(( $i + 1))
+    prev_out="$out"
+  done
+
+  # parallel execution speeds things up a lot, but it also
+  # makes it hard to interrupt the process
+  echo -e "${x_args[@]}" \
+  | xargs -P $(($ncores + 1)) -n 4 \
+    sh -c 'composite -blend "$1" "$2" "$3" "$4"' ign
+}
+
+
+if [[ ( $# -eq 1 ) && ( "$1" =~ .[gG][iI][fF]$ ) ]]; then
+  mkdir -p "$outdir"
+  extract-gif $1
+fi
+
+points=$(get-blending-steps "$transition")
+
+shopt -s dotglob
+shopt -s nullglob
+frames=("${outdir}"/*.gif)
+nframes=${#frames[@]}
+
+
+# create a seemless transition from the last to the first frame
+if [[ $blend_last -eq 0 ]]; then
+  first="${frames[0]}"
+  new=$(next-in-seq "${frames[$((nframes-1))]}")
+
+  echo "Creating extra frame '$(basename $new)' from '$(basename $first)'"
+  cp -l "$first" "$new"
+
+  frames=("${outdir}"/*.gif)
+fi
+
+
+# blend images
+prev=""
+for img in ${frames[@]}; do
+  if [[ -z "$prev" ]]; then
+    prev="$img"
+    continue
+  fi
+
+  blend-images "$points" "$img" "$prev"
+  prev="$img"
+done
+
+
+# remove extracted/copies frames
+echo "${frames[@]}" | xargs rm
