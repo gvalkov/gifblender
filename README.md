@@ -24,6 +24,21 @@ Usage
       ease-in-out
 
 
+```bash
+
+# for looping gifs, the -b|--blend-last option lets you blend the last
+# and first frames (this creates a seemlessly looping gif)
+$ gifblender -o /tmp/frames/ -s 20 -t ease -b source.gif
+
+# you can also blend arbitrary image sequences if they have the same
+# dimensions
+$ gifblender -o /tmp/frames/ -s 20 img1.jpg img2.jpg img3.jpg *.jpg
+```
+
+**Note:** *gifblender* only creates intermediary frames - it does not
+create gifs. Use a program like [gifsicle][2] to animate
+*gifblender*'s results.
+
 Transition
 ----------
 
@@ -63,6 +78,7 @@ License
 
 
 [1]: http://www.imagemagick.org/script/index.php
+[2]: http://www.lcdf.org/gifsicle/
 [source]: https://raw.github.com/gvalkov/screenshots/master/gifblender/demo.gif
 [ease]: https://raw.github.com/gvalkov/screenshots/master/gifblender/ease.gif
 [ease-in]: https://raw.github.com/gvalkov/screenshots/master/gifblender/ease-in.gif
