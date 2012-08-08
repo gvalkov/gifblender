@@ -1,4 +1,4 @@
-#!/bin/bash -u
+#!/usr/bin/env bash
 
 # Copyright (c) 2012 Georgi Valkov. All rights reserved.
 #
@@ -52,6 +52,7 @@ Available transition timings:
 [[ $# -eq 0 ]] \
 && echo "$usage" && exit 1
 
+set -u
 
 ## default options
 help=1
