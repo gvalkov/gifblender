@@ -1,7 +1,7 @@
 gifblender
 ==========
 
-*gifblender* blends the frames of animated gifs and other image sequences.
+*gifblender* blends the frames of animated gifs or other image sequences.
 
 
 Usage

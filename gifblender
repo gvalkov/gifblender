@@ -285,5 +285,5 @@ for img in ${frames[@]}; do
 done
 
 
-# remove extracted/copies frames
+# remove extracted/copied frames
 echo "${frames[@]}" | xargs rm
