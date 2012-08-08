@@ -14,7 +14,7 @@ Usage
       -o, --outdir <arg>       output directory
       -s, --steps <arg>        number of steps
       -t, --transition <arg>   transition timing
-      -b, --blend-last         blend first and last frame
+      -b, --blend-last         blend first and last frames
 
     Available transition timings:
       linear (default)
