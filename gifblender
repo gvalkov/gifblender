@@ -239,13 +239,24 @@ function blend-images () {
 if [[ ( $# -eq 1 ) && ( "$1" =~ .[gG][iI][fF]$ ) ]]; then
   mkdir -p "$outdir"
   extract-gif $1
+else
+  mkdir -p "$outdir"
+  i=0;n=$#
+
+  while [[ n -gt $i  ]]; do
+    ext="${1#*.}"
+    cp "$1" $(printf "${outdir}/frame-%04d.${ext}" $i)
+    i=$(( $i + 1))
+    shift
+  done
 fi
+
 
 points=$(get-blending-steps "$transition")
 
 shopt -s dotglob
 shopt -s nullglob
-frames=("${outdir}"/*.gif)
+frames=("${outdir}"/frame-*.*)
 nframes=${#frames[@]}
 
 
@@ -257,7 +268,7 @@ if [[ $blend_last -eq 0 ]]; then
   echo "Creating extra frame '$(basename $new)' from '$(basename $first)'"
   cp -l "$first" "$new"
 
-  frames=("${outdir}"/*.gif)
+  frames=("${outdir}"/frame-*.*)
 fi
 
 
