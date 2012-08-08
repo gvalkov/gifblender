@@ -1,7 +1,7 @@
 gifblender
 ==========
 
-*gifblender* extracts and blends the frames of an animated gif.
+*gifblender* blends the frames of animated gifs and other image sequences.
 
 
 Usage
@@ -34,6 +34,8 @@ $ gifblender -o /tmp/frames/ -s 20 -t ease -b source.gif
 # dimensions
 $ gifblender -o /tmp/frames/ -s 20 img1.jpg img2.jpg img3.jpg *.jpg
 ```
+
+[Example output][3]
 
 **Note:** *gifblender* only creates intermediary frames - it does not
 create gifs. Use a program like [gifsicle][2] to animate
@@ -79,6 +81,7 @@ License
 
 [1]: http://www.imagemagick.org/script/index.php
 [2]: http://www.lcdf.org/gifsicle/
+[3]: https://raw.github.com/gist/3295600/3ff0e9ec916c1275841d96cc3f52fe9de43a6af4/gistfile1.txt
 [source]: https://raw.github.com/gvalkov/screenshots/master/gifblender/demo.gif
 [ease]: https://raw.github.com/gvalkov/screenshots/master/gifblender/ease.gif
 [ease-in]: https://raw.github.com/gvalkov/screenshots/master/gifblender/ease-in.gif
