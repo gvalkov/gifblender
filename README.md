@@ -76,7 +76,7 @@ $ port install ImageMagick
 License
 -------
 
-*gifblender* is released under the terms of the `New BSD License`_.
+*gifblender* is released under the terms of the New BSD License.
 
 
 [1]: http://www.imagemagick.org/script/index.php
