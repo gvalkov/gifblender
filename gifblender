@@ -193,7 +193,7 @@ function list-transitions () {
 function next-in-seq () {
   # will break if extension has numbers in it
   next=$(echo "$1" | grep -o '[0-9]*' | tail -1)
-  next=$(printf "%04d" $(($next + 1)))
+  next=$(printf "%04d" $(echo "${next} + 1" | bc))
   echo "$1" | sed -e "s,-[0-9]*\.,-${next}.,"
 }
 
