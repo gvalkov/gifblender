@@ -212,8 +212,8 @@ function extract-gif () {
 
 
 function blend-images () {
-  i=0
-  ncores=$(grep processor /proc/cpuinfo | wc -l)
+  local i=0
+  local ncores=$(get-cpu-count)
 
   echo -e "\nBlending $(basename $2) with $(basename $3):"
   prev_out=""
@@ -228,6 +228,17 @@ function blend-images () {
 
     printf "%s + %-4s + %s -> %s \n" $(basename $2) ${percent}%  $(basename $3) $(basename $out)
     x_args[$i]=$"${percent}%\n${2}\n${3}\n${out}\n"
+function get-cpu-count () {
+  if [ -r /proc/cpuinfo ]; then
+    grep -c processor /proc/cpuinfo
+    return
+  fi
+
+  # FreeBSD
+  sysctl dev.cpu | grep -c location
+}
+
+
     i=$(( $i + 1))
     prev_out="$out"
   done
