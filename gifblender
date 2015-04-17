@@ -53,7 +53,7 @@ Available transition timings:
   ease-in-out\
 "
 
-if [[ $# -eq 0 ]]; then
+if [ $# -eq 0 ]; then
   echo "$usage"
   exit 1
 fi
@@ -101,12 +101,12 @@ while getopts "o:t:s:bh" opt; do
 done
 shift $((OPTIND-1))
 
-if [[ $CONFIG_DO_HELP -eq 0 ]]; then
+if [ $CONFIG_DO_HELP -eq 0 ]; then
    echo "$usage"
    exit 0
 fi
 
-if [[ -z "$CONFIG_OUTDIR" ]]; then
+if [ -z "$CONFIG_OUTDIR" ]; then
   echo "please specify output directory with -o|--outdir"
   exit 1
 fi
@@ -187,8 +187,8 @@ for (t=0.0 ; t<=1.0; t+=inc) {
 EOF
 }
 
-# the control point values were taken from the
-# transition-timing-function property in css3
+# The control point values were taken from the transition-timing-function
+# property in css3
 function get-blending-steps () {
   case "$1" in
     linear)      p=$(blending-steps "$CONFIG_STEPS" 0 0 1 1);;
@@ -293,7 +293,7 @@ nframes=${#frames[@]}
 
 
 # create a seemless transition from the last to the first frame
-if [[ $CONFIG_BLEND_LAST -eq 0 ]]; then
+if [ $CONFIG_BLEND_LAST -eq 0 ]; then
   first="${frames[0]}"
   new=$(next-in-seq "${frames[$((nframes-1))]}")
 
@@ -307,7 +307,7 @@ fi
 # blend images
 prev=""
 for img in ${frames[@]}; do
-  if [[ -z "$prev" ]]; then
+  if [ -z "$prev" ]; then
     prev="$img"
     continue
   fi
