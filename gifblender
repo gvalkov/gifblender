@@ -31,6 +31,10 @@
 
 # I really needed a short break from Python, so I wrote this.
 
+set -u
+
+#-----------------------------------------------------------------------------
+# Handle options and usage
 usage="\
 Usage: $(basename $0) [options] <img.gif>|<img1> <img2> ...
 
@@ -61,28 +65,41 @@ CONFIG_OUTDIR=""
 CONFIG_BLEND_LAST=1
 CONFIG_TRANSITION=linear
 
-long_opts="outdir:,steps:,transition:,help,blend-last"
-opts=$(/usr/local/bin/getopt -o "o:t:s:bh" -l "$long_opts" -- "$@")
 
-if [[ $? -ne 0 ]]; then
-  exit 1
-fi
+# Translate all long options to short options. This is simpler than checking
+# if the system's getopt supports long options (i.e on FreeBSD).
+function longopts_to_shortopts () {
+  local delim=""
+  local opts=""
+  for opt in "$@"; do
+    delim=""
+    case "$opt" in
+      --outdir)      opts="${opts}-o ";;
+      --transition)  opts="${opts}-t ";;
+      --steps)       opts="${opts}-s ";;
+      --help)        opts="${opts}-h ";;
+      --blend-last)  opts="${opts}-b ";;
+      *)
+        [ "${opt:0:1}" != "-" ] && delim='"'
+        opts="${opts}${delim}${opt}${delim} "
+        ;;
+    esac
+  done
+  echo "$opts"
+}
 
-eval set -- "$opts"
+eval set -- "$(longopts_to_shortopts '$@')"
 
-while [[ $# -gt 0 ]]; do
-  case $1 in
-    -o|--outdir)      CONFIG_OUTDIR="$2" ; shift ;;
-    -t|--transition)  CONFIG_TRANSITION="$2"; shift ;;
-    -s|--steps)       CONFIG_STEPS="$2"; shift ;;
-    -h|--help)        CONFIG_DO_HELP=0;;
-    -b|--blend-last)  CONFIG_BLEND_LAST=0;;
-    --) shift; break ;;
-     *) break;;
+while getopts "o:t:s:bh" opt; do
+  case "$opt" in
+    o) CONFIG_OUTDIR="$OPTARG";;
+    t) CONFIG_TRANSITION="$OPTARG";;
+    s) CONFIG_STEPS="$2";;
+    h) CONFIG_DO_HELP=0;;
+    b) CONFIG_BLEND_LAST=0;;
   esac
-  shift
 done
-
+shift $((OPTIND-1))
 
 if [[ $CONFIG_DO_HELP -eq 0 ]]; then
    echo "$usage"
@@ -211,23 +228,6 @@ function extract-gif () {
 }
 
 
-function blend-images () {
-  local i=0
-  local ncores=$(get-cpu-count)
-
-  echo -e "\nBlending $(basename $2) with $(basename $3):"
-  prev_out=""
-  for percent in $1; do
-    percent=$(printf "%04d" $percent)
-
-    fn="${2%.*}"
-    ext="${2#*.}"
-    out="${fn}-${percent}.${ext}"
-
-    [[ "$prev_out" == "$out" ]] && out="${fn}-${percent}a.${ext}"
-
-    printf "%s + %-4s + %s -> %s \n" $(basename $2) ${percent}%  $(basename $3) $(basename $out)
-    x_args[$i]=$"${percent}%\n${2}\n${3}\n${out}\n"
 function get-cpu-count () {
   if [ -r /proc/cpuinfo ]; then
     grep -c processor /proc/cpuinfo
@@ -239,6 +239,23 @@ function get-cpu-count () {
 }
 
 
+function blend-images () {
+  local i=0
+  local ncores=$(get-cpu-count)
+
+  echo -e "\nBlending $(basename $2) with $(basename $3):"
+  local prev_out=""
+  for percent in $1; do
+    percent=$(printf "%04d" $percent)
+
+    fn="${2%.*}"
+    ext="${2#*.}"
+    out="${fn}-${percent}.${ext}"
+
+    [[ "$prev_out" == "$out" ]] && out="${fn}-${percent}a.${ext}"
+
+    printf "%s + %-4s + %s -> %s \n" $(basename $2) ${percent}%  $(basename $3) $(basename $out)
+    x_args[$i]=$"${percent}%\n${2}\n${3}\n${out}\n"
     i=$(( $i + 1))
     prev_out="$out"
   done
