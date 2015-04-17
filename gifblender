@@ -49,34 +49,34 @@ Available transition timings:
   ease-in-out\
 "
 
-[[ $# -eq 0 ]] \
-&& echo "$usage" && exit 1
+if [[ $# -eq 0 ]]; then
+  echo "$usage"
+  exit 1
+fi
 
-set -u
+## Default options
+CONFIG_DO_HELP=1
+CONFIG_STEPS=10
+CONFIG_OUTDIR=""
+CONFIG_BLEND_LAST=1
+CONFIG_TRANSITION=linear
 
-## default options
-help=1
-steps=10
-outdir=""
-blend_last=1
-transition=linear
-list_transitions=1
-
-
-## parse command line
 long_opts="outdir:,steps:,transition:,help,blend-last"
-opts=$(getopt -o "o:t:s:bh" -l "$long_opts" -- "$@")
-[[ $? -ne 0 ]] && exit 1
+opts=$(/usr/local/bin/getopt -o "o:t:s:bh" -l "$long_opts" -- "$@")
+
+if [[ $? -ne 0 ]]; then
+  exit 1
+fi
 
 eval set -- "$opts"
 
 while [[ $# -gt 0 ]]; do
   case $1 in
-    -o|--outdir)      outdir="$2" ; shift ;;
-    -t|--transition)  transition="$2"; shift ;;
-    -s|--steps)       steps="$2"; shift ;;
-    -h|--help)        help=0;;
-    -b|--blend-last)  blend_last=0;;
+    -o|--outdir)      CONFIG_OUTDIR="$2" ; shift ;;
+    -t|--transition)  CONFIG_TRANSITION="$2"; shift ;;
+    -s|--steps)       CONFIG_STEPS="$2"; shift ;;
+    -h|--help)        CONFIG_DO_HELP=0;;
+    -b|--blend-last)  CONFIG_BLEND_LAST=0;;
     --) shift; break ;;
      *) break;;
   esac
@@ -84,13 +84,17 @@ while [[ $# -gt 0 ]]; do
 done
 
 
-[[ $help -eq 0 ]] && echo "$usage" && exit 1
+if [[ $CONFIG_DO_HELP -eq 0 ]]; then
+   echo "$usage"
+   exit 0
+fi
 
-if [[ -z "$outdir" ]]; then
+if [[ -z "$CONFIG_OUTDIR" ]]; then
   echo "please specify output directory with -o|--outdir"
   exit 1
 fi
 
+#-----------------------------------------------------------------------------
 # Return n blending steps from 0 to 100%
 # A good explanation on what's about to happen can be found here:
 # http://st-on-it.blogspot.com/2011/05/calculating-cubic-bezier-function.html
@@ -166,27 +170,27 @@ for (t=0.0 ; t<=1.0; t+=inc) {
 EOF
 }
 
-
-# the control points values were taken from the
+# the control point values were taken from the
 # transition-timing-function property in css3
 function get-blending-steps () {
   case "$1" in
-    linear)      p=$(blending-steps $steps 0 0 1 1);;
-    ease)        p=$(blending-steps $steps 0.25 0.1 0.25 1);;
-    ease-in)     p=$(blending-steps $steps 0.42 0 1 1);;
-    ease-out)    p=$(blending-steps $steps 0 0 0.58 1);;
-    ease-in-out) p=$(blending-steps $steps 0.42 0 0.58 1);;
+    linear)      p=$(blending-steps "$CONFIG_STEPS" 0 0 1 1);;
+    ease)        p=$(blending-steps "$CONFIG_STEPS" 0.25 0.1 0.25 1);;
+    ease-in)     p=$(blending-steps "$CONFIG_STEPS" 0.42 0 1 1);;
+    ease-out)    p=$(blending-steps "$CONFIG_STEPS" 0 0 0.58 1);;
+    ease-in-out) p=$(blending-steps "$CONFIG_STEPS" 0.42 0 0.58 1);;
   esac
   echo "$p"
 }
 
 
-function list-transitions () {
-  for t in ${transitions[@]}; do
-    points=$(get-blending-steps $t | xargs)
-    printf "%-12s %s %s\n" $t: $(spark.py $points) "$points"
-  done
-}
+# # Useful for debugging the values produced by get-blending-steps
+# function list-transitions () {
+#   for t in ${CONFIG_TRANSITION[@]}; do
+#     local points=$(get-blending-steps "$t" | xargs)
+#     printf "%-12s %s %s\n" "$t": $(spark.py $points) "$points"
+#   done
+# }
 
 
 # frame-025.gif -> frame-026.gif
@@ -203,7 +207,7 @@ function extract-gif () {
   # count=$(echo "$frames" | wc -l)
 
   echo "Extracting $(identify $1 | wc -l) frames from $1"
-  convert "$1" "${outdir}/frame-%04d.gif"
+  convert "$1" "${CONFIG_OUTDIR}/frame-%04d.gif"
 }
 
 
@@ -237,38 +241,38 @@ function blend-images () {
 
 
 if [[ ( $# -eq 1 ) && ( "$1" =~ .[gG][iI][fF]$ ) ]]; then
-  mkdir -p "$outdir"
+  mkdir -p "$CONFIG_OUTDIR"
   extract-gif $1
 else
-  mkdir -p "$outdir"
+  mkdir -p "$CONFIG_OUTDIR"
   i=0;n=$#
 
   while [[ n -gt $i  ]]; do
     ext="${1#*.}"
-    cp "$1" $(printf "${outdir}/frame-%04d.${ext}" $i)
+    cp "$1" $(printf "${CONFIG_OUTDIR}/frame-%04d.${ext}" $i)
     i=$(( $i + 1))
     shift
   done
 fi
 
 
-points=$(get-blending-steps "$transition")
+points=$(get-blending-steps "$CONFIG_TRANSITION")
 
 shopt -s dotglob
 shopt -s nullglob
-frames=("${outdir}"/frame-*.*)
+frames=("${CONFIG_OUTDIR}"/frame-*.*)
 nframes=${#frames[@]}
 
 
 # create a seemless transition from the last to the first frame
-if [[ $blend_last -eq 0 ]]; then
+if [[ $CONFIG_BLEND_LAST -eq 0 ]]; then
   first="${frames[0]}"
   new=$(next-in-seq "${frames[$((nframes-1))]}")
 
   echo "Creating extra frame '$(basename $new)' from '$(basename $first)'"
   cp -l "$first" "$new"
 
-  frames=("${outdir}"/frame-*.*)
+  frames=("${CONFIG_OUTDIR}"/frame-*.*)
 fi
 
 
