@@ -70,6 +70,9 @@ $ yum install ImageMagick
 
 # Mac OS with macports
 $ port install ImageMagick
+
+# FreeBSD
+$ pkg install ImageMagick # or ImageMagick-nox11
 ```
 
 
@@ -82,9 +85,9 @@ License
 [1]: http://www.imagemagick.org/script/index.php
 [2]: http://www.lcdf.org/gifsicle/
 [3]: https://raw.github.com/gist/3295600/3ff0e9ec916c1275841d96cc3f52fe9de43a6af4/gistfile1.txt
-[source]: https://raw.github.com/gvalkov/screenshots/master/gifblender/demo.gif
-[ease]: https://raw.github.com/gvalkov/screenshots/master/gifblender/ease.gif
-[ease-in]: https://raw.github.com/gvalkov/screenshots/master/gifblender/ease-in.gif
-[ease-out]: https://raw.github.com/gvalkov/screenshots/master/gifblender/ease-out.gif
-[ease-in-out]: https://raw.github.com/gvalkov/screenshots/master/gifblender/ease-in-out.gif
-[linear]: https://raw.github.com/gvalkov/screenshots/master/gifblender/linear.gif
+[source]:      https://raw.github.com/gvalkov/gifblender/master/.screenshots/demo.gif
+[ease]:        https://raw.github.com/gvalkov/gifblender/master/.screenshots/ease.gif
+[ease-in]:     https://raw.github.com/gvalkov/gifblender/master/.screenshots/ease-in.gif
+[ease-out]:    https://raw.github.com/gvalkov/gifblender/master/.screenshots/ease-out.gif
+[ease-in-out]: https://raw.github.com/gvalkov/gifblender/master/.screenshots/ease-in-out.gif
+[linear]:      https://raw.github.com/gvalkov/gifblender/master/.screenshots/linear.gif
