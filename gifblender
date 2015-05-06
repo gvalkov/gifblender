@@ -253,14 +253,14 @@ function blend-images () {
 
     printf "%s + %-4s + %s -> %s \n" $(basename "$2") "${percent}%" $(basename "$3") $(basename "$out")
     x_args[$i]=$"${percent}%\n${2}\n${3}\n${out}\n"
-    i=$(( i + 1))
+    i=$(( i + 1 ))
     prev_out="$out"
   done
 
-  # Parallel execution speeds things up a lot, but it also
-  # makes it hard to interrupt the process.
-  echo -e "${x_args[@]}" \
-  | xargs -P $(( ncores + 1 )) -n 4 \
+  # Parallel execution speeds things up a lot, but it also makes the process
+  # hard to interrupt.
+  echo -en "${x_args[@]}" \
+  | xargs -P $(( ncores + 1 )) -d '\n' -n 4 \
     sh -c 'composite -blend "$1" "$2" "$3" "$4"' ign
 }
 
@@ -313,6 +313,7 @@ points=$(get-blending-steps "$CONFIG_TRANSITION")
 shopt -s dotglob
 shopt -s nullglob
 
+IFS="$(printf '\n\t')"
 declare -a FRAMES=("${CONFIG_OUTDIR}"/frame-*.*)
 declare -r NFRAMES=${#FRAMES[@]}
 
@@ -335,4 +336,4 @@ for img in ${FRAMES[@]}; do
 done
 
 # Remove extracted/copied frames.
-echo "${FRAMES[@]}" | xargs rm
+printf "%s\n" "${FRAMES[@]}" | xargs -d '\n' rm
