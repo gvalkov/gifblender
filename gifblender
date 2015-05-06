@@ -34,9 +34,9 @@
 set -u
 
 #-----------------------------------------------------------------------------
-# Handle options and usage
+# Handle options and usage.
 usage="\
-Usage: $(basename $0) [options] <img.gif>|<img1> <img2> ...
+Usage: $(basename "$0") [options] <img.gif>|<img1> <img2> ...
 
 Options:
   -h, --help               show this help message and exit
@@ -65,9 +65,9 @@ CONFIG_OUTDIR=""
 CONFIG_BLEND_LAST=1
 CONFIG_TRANSITION=linear
 
-
-# Translate all long options to short options. This is simpler than checking
-# if the system's getopt supports long options (i.e on FreeBSD).
+# Instead of requiring a `getopts` that supports long options, we simply
+# translate all long options to their short equivalents. While most BSDs
+# provide GNU `getopts` in their ports collection, this approach is simpler.
 function longopts_to_shortopts () {
   local delim=""
   local opts=""
@@ -88,7 +88,7 @@ function longopts_to_shortopts () {
   echo "$opts"
 }
 
-eval set -- "$(longopts_to_shortopts '$@')"
+eval set -- $(longopts_to_shortopts "$@")
 
 while getopts "o:t:s:bh" opt; do
   case "$opt" in
@@ -99,7 +99,7 @@ while getopts "o:t:s:bh" opt; do
     b) CONFIG_BLEND_LAST=0;;
   esac
 done
-shift $((OPTIND-1))
+shift $(( OPTIND - 1 ))
 
 if [ $CONFIG_DO_HELP -eq 0 ]; then
    echo "$usage"
@@ -112,7 +112,7 @@ if [ -z "$CONFIG_OUTDIR" ]; then
 fi
 
 #-----------------------------------------------------------------------------
-# Return n blending steps from 0 to 100%
+# Return n blending steps from 0 to 100%.
 # A good explanation on what's about to happen can be found here:
 # http://st-on-it.blogspot.com/2011/05/calculating-cubic-bezier-function.html
 function blending-steps () {
@@ -188,7 +188,7 @@ EOF
 }
 
 # The control point values were taken from the transition-timing-function
-# property in css3
+# property in css3.
 function get-blending-steps () {
   case "$1" in
     linear)      p=$(blending-steps "$CONFIG_STEPS" 0 0 1 1);;
@@ -213,22 +213,15 @@ function get-blending-steps () {
 # frame-025.gif -> frame-026.gif
 function next-in-seq () {
   # will break if extension has numbers in it
-  next=$(echo "$1" | grep -o '[0-9]*' | tail -1)
-  next=$(printf "%04d" $(echo "${next} + 1" | bc))
-  echo "$1" | sed -e "s,-[0-9]*\.,-${next}.,"
-}
-
-
-function extract-gif () {
-  # frames=$(identify $1 | awk -F' GIF ' '{print $1}')
-  # count=$(echo "$frames" | wc -l)
-
-  echo "Extracting $(identify $1 | wc -l) frames from $1"
-  convert "$1" "${CONFIG_OUTDIR}/frame-%04d.gif"
+  local next
+  next=$(echo "$1" | grep -oE '[0-9]+' | tail -1)
+  next=$(printf "%04d" $(( next + 1 )))
+  echo "$1" | sed -e "s|-[0-9]*\.|-${next}.|"
 }
 
 
 function get-cpu-count () {
+  # Linux-en
   if [ -r /proc/cpuinfo ]; then
     grep -c processor /proc/cpuinfo
     return
@@ -243,7 +236,9 @@ function blend-images () {
   local i=0
   local ncores=$(get-cpu-count)
 
-  echo -e "\nBlending $(basename $2) with $(basename $3):"
+  echo -e "\nBlending $(basename "$2") with $(basename "$3"):"
+
+  local percent=0
   local prev_out=""
   for percent in $1; do
     percent=$(printf "%04d" $percent)
@@ -252,61 +247,84 @@ function blend-images () {
     ext="${2#*.}"
     out="${fn}-${percent}.${ext}"
 
-    [[ "$prev_out" == "$out" ]] && out="${fn}-${percent}a.${ext}"
+    if [ "$prev_out" = "$out" ]; then
+      out="${fn}-${percent}a.${ext}"
+    fi
 
-    printf "%s + %-4s + %s -> %s \n" $(basename $2) ${percent}%  $(basename $3) $(basename $out)
+    printf "%s + %-4s + %s -> %s \n" $(basename "$2") "${percent}%" $(basename "$3") $(basename "$out")
     x_args[$i]=$"${percent}%\n${2}\n${3}\n${out}\n"
-    i=$(( $i + 1))
+    i=$(( i + 1))
     prev_out="$out"
   done
 
-  # parallel execution speeds things up a lot, but it also
-  # makes it hard to interrupt the process
+  # Parallel execution speeds things up a lot, but it also
+  # makes it hard to interrupt the process.
   echo -e "${x_args[@]}" \
-  | xargs -P $(($ncores + 1)) -n 4 \
+  | xargs -P $(( ncores + 1 )) -n 4 \
     sh -c 'composite -blend "$1" "$2" "$3" "$4"' ign
 }
 
 
-if [[ ( $# -eq 1 ) && ( "$1" =~ .[gG][iI][fF]$ ) ]]; then
-  mkdir -p "$CONFIG_OUTDIR"
-  extract-gif $1
-else
-  mkdir -p "$CONFIG_OUTDIR"
-  i=0;n=$#
-
-  while [[ n -gt $i  ]]; do
-    ext="${1#*.}"
-    cp "$1" $(printf "${CONFIG_OUTDIR}/frame-%04d.${ext}" $i)
-    i=$(( $i + 1))
-    shift
-  done
-fi
+function extract-gif () {
+  echo "Extracting $(identify "$1" | wc -l) frames from $1"
+  convert "$1" "${CONFIG_OUTDIR}/frame-%04d.gif"
+}
 
 
+function prepare-input-files () {
+  if [[ ( $# -eq 1 ) && ( "$1" =~ .[gG][iI][fF]$ ) ]]; then
+    # Input is a GIF.
+    mkdir -p "$CONFIG_OUTDIR"
+    extract-gif "$1"
+  else
+    # Input is a series of images.
+    mkdir -p "$CONFIG_OUTDIR"
+    local i=0
+    local n=$#
+
+    while [ $n -gt $i  ]; do
+      local ext="${1#*.}"
+      cp "$1" $(printf "${CONFIG_OUTDIR}/frame-%04d.${ext}" $i)
+      i=$(( i + 1 ))
+      shift
+    done
+  fi
+}
+
+
+function copy-first-last () {
+  local first="$1"
+  local last="$2"
+  local new_frame=$(next-in-seq $last)
+
+  echo "Creating extra frame '$(basename $new_frame)' from '$(basename $first)'"
+  cp -l "$first" "$new_frame"
+}
+
+
+#-----------------------------------------------------------------------------
+
+# Extract input GIF or copy input image sequence to $CONFIG_OUTDIR.
+prepare-input-files "$@"
+
+# Get blending steps (e.g. 0 2 6 13 21 32 43 55 69 84 100).
 points=$(get-blending-steps "$CONFIG_TRANSITION")
 
 shopt -s dotglob
 shopt -s nullglob
-frames=("${CONFIG_OUTDIR}"/frame-*.*)
-nframes=${#frames[@]}
 
+declare -a FRAMES=("${CONFIG_OUTDIR}"/frame-*.*)
+declare -r NFRAMES=${#FRAMES[@]}
 
-# create a seemless transition from the last to the first frame
+# Create a seemless transition from the last to the first frame.
 if [ $CONFIG_BLEND_LAST -eq 0 ]; then
-  first="${frames[0]}"
-  new=$(next-in-seq "${frames[$((nframes-1))]}")
-
-  echo "Creating extra frame '$(basename $new)' from '$(basename $first)'"
-  cp -l "$first" "$new"
-
-  frames=("${CONFIG_OUTDIR}"/frame-*.*)
+  copy-first-last "${FRAMES[0]}" "${FRAMES[$(( NFRAMES - 1 ))]}"
+  FRAMES=("${CONFIG_OUTDIR}"/frame-*.*)
 fi
 
-
-# blend images
+# Blend images, possibly in parallel.
 prev=""
-for img in ${frames[@]}; do
+for img in ${FRAMES[@]}; do
   if [ -z "$prev" ]; then
     prev="$img"
     continue
@@ -316,6 +334,5 @@ for img in ${frames[@]}; do
   prev="$img"
 done
 
-
-# remove extracted/copied frames
-echo "${frames[@]}" | xargs rm
+# Remove extracted/copied frames.
+echo "${FRAMES[@]}" | xargs rm
