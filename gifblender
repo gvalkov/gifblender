@@ -267,7 +267,7 @@ function blend-images () {
 
 function extract-gif () {
   echo "Extracting $(identify "$1" | wc -l) frames from $1"
-  convert "$1" "${CONFIG_OUTDIR}/frame-%04d.gif"
+  convert -coalesce "$1" "${CONFIG_OUTDIR}/frame-%04d.gif"
 }
 
 
