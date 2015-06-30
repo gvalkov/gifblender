@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-
 # Copyright (c) 2012-2015 Georgi Valkov. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -224,11 +223,13 @@ function get-cpu-count () {
   # Linux-en
   if [ -r /proc/cpuinfo ]; then
     grep -c processor /proc/cpuinfo
-    return
+  elif [[ "$OSTYPE" == "darwin"* ]]; then
+    # Mac OS
+    sysctl hw.ncpu | grep -o '\d'
+  else
+    # FreeBSD
+    sysctl dev.cpu | grep -c location
   fi
-
-  # FreeBSD
-  sysctl dev.cpu | grep -c location
 }
 
 
@@ -259,9 +260,17 @@ function blend-images () {
 
   # Parallel execution speeds things up a lot, but it also makes the process
   # hard to interrupt.
-  echo -en "${x_args[@]}" \
-  | xargs -P $(( ncores + 1 )) -d '\n' -n 4 \
-    sh -c 'composite -blend "$1" "$2" "$3" "$4"' ign
+  # Check for GNU xargs (Mac OSX via brew install findutils) as the default OSX 
+  # xargs does not have -d
+  if hash gxargs 2>/dev/null; then
+    echo -en "${x_args[@]}" \
+      | gxargs -P $(( ncores + 1 )) -d '\n' -n 4 \
+      sh -c 'composite -blend "$1" "$2" "$3" "$4"' ign
+  else
+    echo -en "${x_args[@]}" \
+      | xargs -P $(( ncores + 1 )) -d '\n' -n 4 \
+      sh -c 'composite -blend "$1" "$2" "$3" "$4"' ign
+  fi
 }
 
 
