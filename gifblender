@@ -93,7 +93,7 @@ while getopts "o:t:s:bh" opt; do
   case "$opt" in
     o) CONFIG_OUTDIR="$OPTARG";;
     t) CONFIG_TRANSITION="$OPTARG";;
-    s) CONFIG_STEPS="$2";;
+    s) CONFIG_STEPS="$OPTARG";;
     h) CONFIG_DO_HELP=0;;
     b) CONFIG_BLEND_LAST=0;;
   esac
